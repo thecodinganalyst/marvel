@@ -5,6 +5,7 @@ import axios from 'axios';
 import config from 'config';
 import { MarvelApi } from '@services/marvel.service';
 import { CharacterDataWrapper } from '@interfaces/marvel.interface';
+import assert from 'assert';
 
 const marvelBaseUrl: string = config.get('marvelBaseUrl');
 const characterEndpoint: string = config.get('characterEndpoint');
@@ -28,6 +29,23 @@ describe('Test Marvel Character', () => {
       expect(wrapper.code).toBe(200);
       expect(wrapper.data.count).toBe(1);
       expect(wrapper.data.results[0].name).toBe('Iron Man');
+    });
+
+    it('should return error', async () => {
+      const url = marvelBaseUrl + characterEndpoint + '1';
+      const param = marvelApi.getAuthenticationParams();
+      try {
+        await axios.get(url, {
+          headers: {
+            Accept: '*/*',
+          },
+          params: param,
+        });
+      } catch (e) {
+        expect(e.response.status).toBe(404);
+        return;
+      }
+      assert.fail();
     });
 
     it('should return a list of characters', async () => {
