@@ -104,16 +104,16 @@ class SimpleGetStrategy implements GetStrategy {
   async get(url: string, params: any): Promise<CharacterDataWrapper> {
     logger.info(`SimpleGetStrategy: get`);
     logger.info(`SimpleGetStrategy: get: ` + url + `: ` + JSON.stringify(params));
-    const response = await axios.get(url, {
-      headers: {
-        Accept: '*/*',
-      },
-      params: params,
-    });
-    if (response && 'data' in response) {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Accept: '*/*',
+        },
+        params: params,
+      });
       return response.data as CharacterDataWrapper;
-    } else {
-      logger.error(`SimpleGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(response));
+    } catch (e) {
+      logger.error(`SimpleGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(e.response.message));
       return Promise.reject(new HttpException(500, `Error retrieving data from Marvel`));
     }
   }
@@ -126,22 +126,27 @@ class CacheGetStrategy implements GetStrategy {
     const etagKey = this.genEtagKeyForMultiPageUrl(url, params);
     const etag: string = this.etagList.get(etagKey) ? this.etagList.get(etagKey) : '';
     logger.info(`CacheGetStrategy: get: ` + url + `: ` + etag + `: ` + JSON.stringify(params));
-    const response = await axios.get(url, {
-      headers: {
-        Accept: '*/*',
-        'If-None-Match': etag,
-      },
-      params: params,
-    });
-    if (!response || !('data' in response)) {
-      logger.error(`CacheGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(response));
+
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Accept: '*/*',
+          'If-None-Match': etag,
+        },
+        params: params,
+      });
+      const wrapper = response.data as CharacterDataWrapper;
+      if (wrapper.etag) {
+        this.etagList.set(etagKey, wrapper.etag);
+      }
+      return wrapper;
+    } catch (e) {
+      if (e.response.status == 304) {
+        return e.response;
+      }
+      logger.error(`CacheGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(e.response.string));
       return Promise.reject(new HttpException(500, `Error retrieving data from Marvel`));
     }
-    const wrapper = response.data as CharacterDataWrapper;
-    if (wrapper.etag) {
-      this.etagList.set(etagKey, wrapper.etag);
-    }
-    return wrapper;
   }
 
   genEtagKeyForMultiPageUrl(url: string, params: any): string {
