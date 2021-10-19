@@ -8,5 +8,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
   },
+  verbose: true,
+  testMatch: ['**/tests/**/*.test.[jt]s?(x)'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, { prefix: '<rootDir>/src' }),
 };

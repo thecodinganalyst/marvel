@@ -15,8 +15,8 @@ class MarvelController {
 
       res.status(200).json(character);
     } catch (error) {
-      logger.error(`MarvelController: ` + error.response.status + `: ` + error.response.statusText);
-      res.status(error.response.status).json(error.response.statusText);
+      logger.error(`MarvelController: ` + error.message);
+      res.status(404).json(error.message);
     }
   };
 
@@ -27,8 +27,8 @@ class MarvelController {
 
       res.status(200).json(characterIdList);
     } catch (error) {
-      logger.error(`MarvelController: ` + error.response.status + `: ` + error.response.statusText);
-      res.status(error.response.status).json(error.response.statusText);
+      logger.error(`MarvelController: ` + error.message);
+      res.status(500).json(error.message);
     }
   };
 }

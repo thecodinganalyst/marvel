@@ -5,7 +5,7 @@ import axios from 'axios';
 import { HttpException } from '@exceptions/HttpException';
 import NodeCache from 'node-cache';
 import config from 'config';
-import { logger} from '@utils/logger';
+import { logger } from '@utils/logger';
 
 class MarvelService {
   public marvelBaseUrl: string = config.get('marvelBaseUrl');
@@ -23,39 +23,51 @@ class MarvelService {
     const url = this.marvelBaseUrl + this.characterListEndpoint;
     const param = { offset: 0, limit: 100 };
 
-    let wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, new Map(Object.entries(param)));
-    if (wrapper.code == 304) return this.characterList;
-    if (wrapper.code != 200) throw new HttpException(wrapper.code, wrapper.status);
-    if (wrapper.code == 200) {
+    try {
+      let wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, new Map(Object.entries(param)));
+      if (wrapper.code == 304) return this.characterList;
+      if (wrapper.code != 200) throw new Error(wrapper.status);
       const total = wrapper.data.total;
-      this.characterList = wrapper.data.results.map(val => val.id.toString());
-      while (this.characterList.length < total) {
+      const tmpCharacterList = wrapper.data.results.map(val => val.id.toString());
+      while (tmpCharacterList.length < total) {
         param.offset += param.limit;
         wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, new Map(Object.entries(param)));
-        this.characterList.push(...wrapper.data.results.map(val => val.id.toString()));
+        tmpCharacterList.push(...wrapper.data.results.map(val => val.id.toString()));
       }
+      this.characterList = tmpCharacterList;
       return this.characterList;
-    } else {
-      return Promise.reject(wrapper.status);
+    } catch (e) {
+      if (this.characterList) {
+        logger.error(
+          `MarvelService: getCharacterIdList: Error occurred while getting the character list from marvel, returning cached character list instead`,
+        );
+        return this.characterList;
+      }
+      logger.error(`MarvelService: getCharacterIdList: ` + e.message);
+      return Promise.reject(`MarvelService: getCharacterIdList: ` + e.message);
     }
   }
 
   public async getCharacter(characterId: number): Promise<CharacterSummary> {
-    logger.error(`MarvelService: getCharacter: ` + characterId);
+    logger.info(`MarvelService: getCharacter: ` + characterId);
     const url = this.marvelBaseUrl + this.characterEndpoint + characterId;
     let characterSummary = this.characterStore.get(characterId) as CharacterSummary;
     if (characterSummary) {
       return characterSummary;
     }
-    const wrapper = await this.marvelApi.GetApi(url, this.simpleGetStrategy, new Map<string, string>());
-    if (wrapper.code != 200) return Promise.reject(new HttpException(wrapper.code, wrapper.status));
-    if (wrapper.data.count >= 1) {
+    try {
+      const wrapper = await this.marvelApi.GetApi(url, this.simpleGetStrategy, new Map<string, string>());
+      if (!wrapper.data || wrapper.data.count < 1 || wrapper.code != 200 || wrapper.data.results.length == 0) {
+        logger.error(`MarvelService: getCharacter: Error getting data from Marvel: ` + JSON.stringify(wrapper.data));
+        throw Error('Error getting data from Marvel');
+      }
       const character = wrapper.data.results[0];
       characterSummary = { Id: character.id, Name: character.name, Description: character.description };
       this.characterStore.set(characterId, characterSummary);
       return Promise.resolve(characterSummary);
-    } else {
-      return Promise.reject(new HttpException(404, 'no character found'));
+    } catch (e) {
+      logger.error(`MarvelService: getCharacter: ` + e.message);
+      return Promise.reject(`MarvelService: getCharacter: ` + e.message);
     }
   }
 }
@@ -97,7 +109,12 @@ class SimpleGetStrategy implements GetStrategy {
       },
       params: params,
     });
-    return response.data as CharacterDataWrapper;
+    if (response && 'data' in response) {
+      return response.data as CharacterDataWrapper;
+    } else {
+      logger.error(`SimpleGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(response));
+      return Promise.reject(new HttpException(500, `Error retrieving data from Marvel`));
+    }
   }
 }
 
@@ -115,6 +132,10 @@ class CacheGetStrategy implements GetStrategy {
       },
       params: params,
     });
+    if (!response || !('data' in response)) {
+      logger.error(`CacheGetStrategy: get: response is not a valid CharacterDataWrapper from: ` + url + `: ` + JSON.stringify(response));
+      return Promise.reject(new HttpException(500, `Error retrieving data from Marvel`));
+    }
     const wrapper = response.data as CharacterDataWrapper;
     if (wrapper.etag) {
       this.etagList.set(etagKey, wrapper.etag);
