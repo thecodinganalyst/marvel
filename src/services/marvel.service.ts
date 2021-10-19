@@ -24,14 +24,14 @@ class MarvelService {
     const param = { offset: 0, limit: 100 };
 
     try {
-      let wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, new Map(Object.entries(param)));
+      let wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, param);
       if (wrapper.code == 304) return this.characterList;
       if (wrapper.code != 200) throw new Error(wrapper.status);
       const total = wrapper.data.total;
       const tmpCharacterList = wrapper.data.results.map(val => val.id.toString());
       while (tmpCharacterList.length < total) {
         param.offset += param.limit;
-        wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, new Map(Object.entries(param)));
+        wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, param);
         tmpCharacterList.push(...wrapper.data.results.map(val => val.id.toString()));
       }
       this.characterList = tmpCharacterList;
@@ -53,6 +53,7 @@ class MarvelService {
     const url = this.marvelBaseUrl + this.characterEndpoint + characterId;
     let characterSummary = this.characterStore.get(characterId) as CharacterSummary;
     if (characterSummary) {
+      logger.info(`MarvelService: getCharacter: return cached result`);
       return characterSummary;
     }
     try {
