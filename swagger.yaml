@@ -1,0 +1,58 @@
+tags:
+- name: characters
+  description: Marvel Characters API
+
+paths:
+# [GET] characters
+  /characters:
+    get:
+      tags:
+      - characters
+      summary: Find All Characters
+      responses:
+        200:
+          description: 'OK'
+        500:
+          description: 'Server Error'
+
+# [GET] characters/id
+  /characters/{id}:
+    get:
+      tags:
+      - characters
+      summary: Find Character By Id
+      parameters:
+      - name: id
+        in: path
+        description: Character Id
+        required: true
+        type: integer
+      responses:
+        200:
+          description: 'OK'
+        409:
+          description: 'Conflict'
+        500:
+          description: 'Server Error'
+
+# definitions
+definitions:
+  characters:
+    type: object
+    required:
+      - Id
+      - Name
+    properties:
+      Id:
+        type: integer
+        description: character Id
+      Name:
+        type: string
+        description: character Name
+      Description:
+        type: string
+        description: character description
+
+schemes:
+ - https
+ - http

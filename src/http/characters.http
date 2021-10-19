@@ -1,0 +1,13 @@
+# characters API
+
+###
+# baseURL
+@baseURL = http://localhost:3000
+
+###
+# Find All Characters
+GET {{baseURL}}/characters
+
+###
+# Find Character By Id
+GET {{baseURL}}/characters/1

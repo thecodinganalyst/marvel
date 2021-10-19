@@ -1,0 +1,15 @@
+{
+    "env": "test",
+    "secretKey": "secretKey",
+    "marvelBaseUrl": "https://gateway.marvel.com",
+    "characterEndpoint": "/v1/public/characters/",
+    "characterListEndpoint": "/v1/public/characters",
+    "log": {
+        "format": "dev",
+        "dir": "../logs"
+    },
+    "cors": {
+        "origin": true,
+        "credentials": true
+    }
+}
