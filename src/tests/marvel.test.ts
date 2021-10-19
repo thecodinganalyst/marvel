@@ -136,6 +136,13 @@ describe('MarvelService Test', () => {
       const key = cacheGetStrategy.genEtagKeyForMultiPageUrl('url', { foo: 'bar', ts: 'ts1', apikey: 'apikey', hash: 'hash' });
       expect(key).toBe('url?foo=bar');
     });
+    it('should resolve when 304 is received', async () => {
+      jest.mock('axios');
+      axios.get = jest.fn().mockRejectedValue({ response: { status: 304 } });
+      const cacheGetStrategy = new CacheGetStrategy();
+      const res = await cacheGetStrategy.get('url', { param: '1' });
+      expect(res.status).toBe(304);
+    });
     it('should get call with the etag on the 2nd attempt', async () => {
       jest.mock('axios');
       axios.get = jest.fn().mockReturnValue({ data: sampleWrapper });

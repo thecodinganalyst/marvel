@@ -25,8 +25,10 @@ class MarvelService {
 
     try {
       let wrapper = await this.marvelApi.GetApi(url, this.cacheGetStrategy, param);
-      if (wrapper.code == 304) return this.characterList;
-      if (wrapper.code != 200) throw new Error(wrapper.status);
+      if (wrapper.status == '304') {
+        logger.info(`MarvelService: getCharacterIdList: return cached character list as 304 is received from Marvel`);
+        return Promise.resolve(this.characterList);
+      }
       const total = wrapper.data.total;
       const tmpCharacterList = wrapper.data.results.map(val => val.id.toString());
       while (tmpCharacterList.length < total) {
@@ -58,10 +60,6 @@ class MarvelService {
     }
     try {
       const wrapper = await this.marvelApi.GetApi(url, this.simpleGetStrategy, new Map<string, string>());
-      if (!wrapper.data || wrapper.data.count < 1 || wrapper.code != 200 || wrapper.data.results.length == 0) {
-        logger.error(`MarvelService: getCharacter: Error getting data from Marvel: ` + JSON.stringify(wrapper.data));
-        throw Error('Error getting data from Marvel');
-      }
       const character = wrapper.data.results[0];
       characterSummary = { Id: character.id, Name: character.name, Description: character.description };
       this.characterStore.set(characterId, characterSummary);
